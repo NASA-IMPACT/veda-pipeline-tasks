@@ -7,10 +7,8 @@ from typing import Any, Dict, Optional, TypedDict, Union
 import boto3
 import requests
 
-
 COGNITO_APP_SECRET = os.environ["COGNITO_APP_SECRET"]
 STAC_INGESTOR_API_URL = os.environ["STAC_INGESTOR_API_URL"]
-
 
 class InputBase(TypedDict):
     dry_run: Optional[Any]
