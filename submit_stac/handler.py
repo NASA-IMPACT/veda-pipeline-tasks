@@ -119,7 +119,7 @@ ingestor = IngestionApi.from_veda_auth_secret(
 )
 
 
-def handler(event: Union[S3LinkInput, StacItemInput], context) -> None:
+def submission_handler(event: Union[S3LinkInput, StacItemInput], context) -> None:
     stac_item = get_stac_item(event)
 
     if event.get("dry_run"):

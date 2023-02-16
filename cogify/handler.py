@@ -167,7 +167,7 @@ def to_cog(upload, **config):
     return return_obj
 
 
-def handler(event, context):
+def cogify_handler(event, context):
     filename = event["href"]
     collection = event["collection"]
     to_cog_config = config._sections[collection]
