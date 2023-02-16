@@ -11,6 +11,9 @@ import dotenv
 # Deployment should handle this for step functions.
 if dotenv.load_dotenv("/usr/local/airflow/dags/.env"):
     print("Loaded .env file for airflow dags")
+    print("===============================")
+    print(os.environ)
+    print("===============================")
 
 
 def assume_role(role_arn, session_name="veda-data-pipelines_s3-discovery"):
