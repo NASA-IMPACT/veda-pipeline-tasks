@@ -5,16 +5,11 @@ from urllib.parse import urlparse
 from typing import Any, Dict, Optional, TypedDict, Union
 
 import boto3
-import dotenv
 import requests
-
-# We load the dotenv file in case we're in airflow.
-# Deployment should handle this for step functions.
-if dotenv.load_dotenv("/usr/local/airflow/dags/.env"):
-    print("Loaded .env file for airflow dags")
 
 COGNITO_APP_SECRET = os.environ["COGNITO_APP_SECRET"]
 STAC_INGESTOR_API_URL = os.environ["STAC_INGESTOR_API_URL"]
+
 
 class InputBase(TypedDict):
     dry_run: Optional[Any]

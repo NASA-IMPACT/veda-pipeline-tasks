@@ -5,18 +5,6 @@ import os
 from uuid import uuid4
 
 from smart_open import open as smrt_open
-import dotenv
-
-# We load the dotenv file in case we're in airflow.
-# Deployment should handle this for step functions.
-loaded_env = dotenv.load_dotenv("/usr/local/airflow/dags/.env")
-if loaded_env:
-    print("Loaded .env file for airflow dags")
-else:
-    print("DID NOT LOAD")
-print("===============================")
-print(os.environ)
-print("===============================")
 
 
 def assume_role(role_arn, session_name="veda-data-pipelines_s3-discovery"):
