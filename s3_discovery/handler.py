@@ -99,7 +99,6 @@ def s3_discovery_handler(event, chunk_size=2800):
     role_arn = os.environ.get("ASSUME_ROLE_ARN")
     kwargs = assume_role(role_arn=role_arn) if role_arn else {}
     s3client = boto3.client("s3", **kwargs)
-
     s3_iterator = get_s3_resp_iterator(
         bucket_name=bucket, prefix=prefix, s3_client=s3client
     )
