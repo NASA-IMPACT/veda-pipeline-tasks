@@ -64,13 +64,13 @@ def upload_file(outfilename, collection):
         raise
 
 
-def download_file(file_uri: str):
+def download_file(file_uri: str, earthdata_username=None, earthdata_password=None):
     filename = os.path.splitext(os.path.basename(file_uri))[0]
     filename = f"/tmp/{filename}"
     if "http" in file_uri:
         # This isn't working for GPMIMERG, need to use .netrc
-        username = os.environ.get("EARTHDATA_USERNAME")
-        password = os.environ.get("EARTHDATA_PASSWORD")
+        username = os.getenv("EARTHDATA_USERNAME", earthdata_username)
+        password = os.getenv("EARTHDATA_PASSWORD", earthdata_password)
         with requests.Session() as session:
             session.auth = (username, password)
             request = session.request("get", file_uri)
@@ -185,7 +185,7 @@ def to_cog(upload, **config):
     return return_obj
 
 
-def cogify_handler(event, context):
+def cogify_handler(event, context=None):
     filename = event["href"]
     collection = event["collection"]
     to_cog_config = config._sections[collection]

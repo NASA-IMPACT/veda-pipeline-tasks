@@ -7,9 +7,6 @@ from typing import Any, Dict, Optional, TypedDict, Union
 import boto3
 import requests
 
-COGNITO_APP_SECRET = os.environ["COGNITO_APP_SECRET"]
-STAC_INGESTOR_API_URL = os.environ["STAC_INGESTOR_API_URL"]
-
 
 class InputBase(TypedDict):
     dry_run: Optional[Any]
@@ -108,20 +105,24 @@ def get_stac_item(event: Dict[str, Any]) -> Dict[str, Any]:
     raise Exception("No stac_item or stac_file_url provided")
 
 
-ingestor = IngestionApi.from_veda_auth_secret(
-    secret_id=COGNITO_APP_SECRET,
-    base_url=STAC_INGESTOR_API_URL,
-)
-
-
-def submission_handler(event: Union[S3LinkInput, StacItemInput], context) -> None:
+def submission_handler(
+    event: Union[S3LinkInput, StacItemInput],
+    cognito_app_secret=None,
+    stac_ingestor_api_url=None,
+) -> None:
     stac_item = get_stac_item(event)
 
     if event.get("dry_run"):
         print("Dry run, not inserting, would have inserted:")
         print(json.dumps(stac_item, indent=2))
         return
+    COGNITO_APP_SECRET = os.getenv("COGNITO_APP_SECRET", cognito_app_secret)
+    STAC_INGESTOR_API_URL = os.getenv("STAC_INGESTOR_API_URL", stac_ingestor_api_url)
 
+    ingestor = IngestionApi.from_veda_auth_secret(
+        secret_id=COGNITO_APP_SECRET,
+        base_url=STAC_INGESTOR_API_URL,
+    )
     ingestor.submit(stac_item)
     print(f"Successfully submitted STAC item")
 
@@ -134,4 +135,4 @@ if __name__ == "__main__":
         "stac_item": {},
         "type": "collections",
     }
-    handler(sample_event, {})
+    submission_handler(sample_event, {})
