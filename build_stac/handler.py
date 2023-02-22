@@ -17,7 +17,9 @@ class StacItemOutput(TypedDict):
     stac_item: Dict[str, Any]
 
 
-def handler(event: Dict[str, Any], context) -> Union[S3LinkOutput, StacItemOutput]:
+def handler(
+    event: Dict[str, Any], context, bucket_name=None
+) -> Union[S3LinkOutput, StacItemOutput]:
     """
     Lambda handler for STAC Collection Item generation
 
@@ -50,7 +52,8 @@ def handler(event: Dict[str, Any], context) -> Union[S3LinkOutput, StacItemOutpu
         return output
 
     # Return link to STAC Item
-    key = f"s3://{os.environ['BUCKET']}/{uuid4()}.json"
+    bucket = os.getenv("BUCKET", bucket_name)
+    key = f"s3://{bucket}/{uuid4()}.json"
     with smart_open.open(key, "w") as file:
         file.write(json.dumps(stac_item))
 
