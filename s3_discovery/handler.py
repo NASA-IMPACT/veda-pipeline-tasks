@@ -76,7 +76,7 @@ def generate_payload(s3_prefix_key: str, payload: dict, limit: int = None):
     return output_key
 
 
-def s3_discovery_handler(event, chunk_size=2800):
+def s3_discovery_handler(event, chunk_size=2800, role_arn=None, bucket_output=None):
     bucket = event.get("bucket")
     prefix = event.get("prefix", "")
     filename_regex = event.get("filename_regex", None)
@@ -96,14 +96,14 @@ def s3_discovery_handler(event, chunk_size=2800):
     if "datetime_range" in event:
         date_fields["datetime_range"] = event["datetime_range"]
 
-    role_arn = os.environ.get("ASSUME_ROLE_ARN")
+    role_arn = os.environ.get("ASSUME_ROLE_ARN", role_arn)
     kwargs = assume_role(role_arn=role_arn) if role_arn else {}
     s3client = boto3.client("s3", **kwargs)
 
     s3_iterator = get_s3_resp_iterator(
         bucket_name=bucket, prefix=prefix, s3_client=s3client
     )
-    bucket_output = os.environ.get("EVENT_BUCKET")
+    bucket_output = os.environ.get("EVENT_BUCKET", bucket_output)
     key = f"s3://{bucket_output}/events/{collection}"
     records = 0
     out_keys = []
