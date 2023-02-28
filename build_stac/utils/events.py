@@ -1,12 +1,12 @@
-from datetime import datetime
-from typing import Dict, List, Literal, Optional, Union
-from pathlib import Path
 import re
+from datetime import datetime
+from pathlib import Path
+from typing import Dict, List, Literal, Optional, Union
+
+import pystac
+from pydantic import BaseModel, Field
 
 from .provider import Provider
-from pydantic import BaseModel, Field
-import pystac
-
 
 INTERVAL = Literal["month", "year"]
 

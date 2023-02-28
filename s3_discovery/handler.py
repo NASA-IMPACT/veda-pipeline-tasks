@@ -1,9 +1,9 @@
-import re
-import boto3
 import json
 import os
+import re
 from uuid import uuid4
 
+import boto3
 from smart_open import open as smrt_open
 
 

@@ -1,11 +1,9 @@
 import configparser
 import os
-import requests
 
 import boto3
-
 import numpy as np
-
+import requests
 from affine import Affine
 from netCDF4 import Dataset
 from rasterio.crs import CRS
@@ -13,7 +11,6 @@ from rasterio.io import MemoryFile
 from rasterio.warp import calculate_default_transform
 from rio_cogeo.cogeo import cog_translate
 from rio_cogeo.profiles import cog_profiles
-
 
 config = {
     "DEFAULT": {"output_bucket": "climatedashboard-data", "output_dir": "OMDOAO3e_003"},
