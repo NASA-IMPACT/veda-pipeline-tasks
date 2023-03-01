@@ -1,8 +1,8 @@
-from enum import Enum
 from datetime import datetime
+from enum import Enum
 from typing import List
 
-from pydantic import BaseModel, AnyUrl
+from pydantic import AnyUrl, BaseModel
 
 
 class ProviderRole(str, Enum):

@@ -1,6 +1,6 @@
 import os
-import urllib.parse
 import tempfile
+import urllib.parse
 
 import boto3
 from botocore.errorfactory import ClientError
