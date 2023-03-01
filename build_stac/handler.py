@@ -5,8 +5,7 @@ from typing import Any, Dict, TypedDict, Union
 from uuid import uuid4
 
 import smart_open
-
-from utils import stac, events
+from utils import events, stac
 
 
 class S3LinkOutput(TypedDict):

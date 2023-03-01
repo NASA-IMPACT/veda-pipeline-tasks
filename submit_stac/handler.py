@@ -1,8 +1,8 @@
-from dataclasses import dataclass
 import json
 import os
-from urllib.parse import urlparse
+from dataclasses import dataclass
 from typing import Any, Dict, Optional, TypedDict, Union
+from urllib.parse import urlparse
 
 import boto3
 import requests
