@@ -108,7 +108,9 @@ def s3_discovery_handler(event, chunk_size=2800, role_arn=None, bucket_output=No
         if slice:
             if idx < slice[0]:  # Skip until we reach the start of the slice
                 continue
-            if idx >= slice[1]:  # Stop once we reach the end of the slice, while saving progress
+            if (
+                idx >= slice[1]
+            ):  # Stop once we reach the end of the slice, while saving progress
                 break
         filename = s3_object["Key"]
         if filename_regex and not re.match(filename_regex, filename):
@@ -123,17 +125,13 @@ def s3_discovery_handler(event, chunk_size=2800, role_arn=None, bucket_output=No
 
         payload["objects"].append(file_obj)
         if records == chunk_size:
-            out_keys.append(
-                generate_payload(s3_prefix_key=key, payload=payload)
-            )
+            out_keys.append(generate_payload(s3_prefix_key=key, payload=payload))
             records = 0
             discovered += len(payload["objects"])
             payload["objects"] = []
         records += 1
 
     if payload["objects"]:
-        out_keys.append(
-            generate_payload(s3_prefix_key=key, payload=payload)
-        )
+        out_keys.append(generate_payload(s3_prefix_key=key, payload=payload))
         discovered += len(payload["objects"])
     return {**event, "payload": out_keys, "discovered": discovered}
