@@ -53,23 +53,18 @@ def discover_from_s3(response_iterator):
             yield s3_object
 
 
-def generate_payload(s3_prefix_key: str, payload: dict, limit: int = None):
+def generate_payload(s3_prefix_key: str, payload: dict):
     """Generate a payload and write it to an S3 file.
-    This function takes in a prefix for an S3 key, a dictionary containing a payload,
-    and an optional limit on the number of objects in the payload. If a limit is provided,
-    the function will slice the objects list in the payload dictionary to include only the specified number
-    of objects. The function then writes the payload to an S3 file using the provided prefix and a randomly
+    This function takes in a prefix for an S3 key and a dictionary containing a payload.
+    The function then writes the payload to an S3 file using the provided prefix and a randomly
     generated UUID as the key. The key of the output file is then returned.
     Parameters:
     s3_prefix_key (str): The prefix for the S3 key where the output file will be written.
     payload (dict): A dictionary containing the payload to be written to the output file.
-    limit (int, optional): The maximum number of objects to include in the payload. If not provided, all objects will be included.
 
     Returns:
     str: The S3 key of the output file.
     """
-    if limit:
-        payload["objects"] = payload["objects"][:limit]
     output_key = f"{s3_prefix_key}/s3_discover_output_{uuid4()}.json"
     with smrt_open(output_key, "w") as file:
         file.write(json.dumps(payload))
@@ -84,7 +79,7 @@ def s3_discovery_handler(event, chunk_size=2800, role_arn=None, bucket_output=No
     properties = event.get("properties", {})
     event["cogify"] = event.pop("cogify", False)
     payload = {**event, "objects": []}
-    limit = event.get("limit")
+    slice = event.get("slice")
     # Propagate forward optional datetime arguments
     date_fields = {}
     if "single_datetime" in event:
@@ -108,7 +103,15 @@ def s3_discovery_handler(event, chunk_size=2800, role_arn=None, bucket_output=No
     records = 0
     out_keys = []
     discovered = 0
-    for s3_object in discover_from_s3(s3_iterator):
+    for idx, s3_object in enumerate(discover_from_s3(s3_iterator)):
+        # Logic to ingest a 'slice' of data
+        if slice:
+            if idx < slice[0]:  # Skip until we reach the start of the slice
+                continue
+            if (
+                idx >= slice[1]
+            ):  # Stop once we reach the end of the slice, while saving progress
+                break
         filename = s3_object["Key"]
         if filename_regex and not re.match(filename_regex, filename):
             continue
@@ -122,19 +125,13 @@ def s3_discovery_handler(event, chunk_size=2800, role_arn=None, bucket_output=No
 
         payload["objects"].append(file_obj)
         if records == chunk_size:
-            out_keys.append(
-                generate_payload(s3_prefix_key=key, payload=payload, limit=limit)
-            )
+            out_keys.append(generate_payload(s3_prefix_key=key, payload=payload))
             records = 0
             discovered += len(payload["objects"])
             payload["objects"] = []
-            if limit:
-                return {**event, "payload": out_keys, "discovered": discovered}
         records += 1
 
     if payload["objects"]:
-        out_keys.append(
-            generate_payload(s3_prefix_key=key, payload=payload, limit=limit)
-        )
+        out_keys.append(generate_payload(s3_prefix_key=key, payload=payload))
         discovered += len(payload["objects"])
     return {**event, "payload": out_keys, "discovered": discovered}
