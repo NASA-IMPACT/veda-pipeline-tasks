@@ -1,7 +1,7 @@
 import json
 import sys
 from dataclasses import dataclass
-
+import os
 if sys.version_info >= (3, 8):
     from typing import TypedDict
 else:
@@ -11,7 +11,6 @@ from typing import Any, Dict, Optional, Union
 
 import boto3
 import requests
-from airflow.models.variable import Variable
 
 
 class InputBase(TypedDict):
@@ -95,7 +94,7 @@ class IngestionApi:
         return response.json()
 
 
-def submission_handler(event: Union[S3LinkInput, StacItemInput], context={}) -> None:
+def submission_handler(event: Union[S3LinkInput, StacItemInput], cognito_app_secret=None, stac_ingestor_api_url=None, context={}) -> None:
     # print(f"SUBMISSION EVENT {event}")
     stac_item = event
 
@@ -104,8 +103,8 @@ def submission_handler(event: Union[S3LinkInput, StacItemInput], context={}) -> 
         print(json.dumps(stac_item, indent=2))
         return
     ingestor = IngestionApi.from_veda_auth_secret(
-        secret_id=Variable.get("COGNITO_APP_SECRET"),
-        base_url=Variable.get("STAC_INGESTOR_API_URL"),
+        secret_id= os.getenv("COGNITO_APP_SECRET", cognito_app_secret),
+        base_url=os.getenv("STAC_INGESTOR_API_URL", stac_ingestor_api_url),
     )
     ingestor.submit(stac_item)
     # print("Successfully submitted STAC item")
