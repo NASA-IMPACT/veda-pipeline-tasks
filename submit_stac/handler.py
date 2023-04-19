@@ -2,6 +2,7 @@ import json
 import sys
 from dataclasses import dataclass
 import os
+
 if sys.version_info >= (3, 8):
     from typing import TypedDict
 else:
@@ -94,7 +95,12 @@ class IngestionApi:
         return response.json()
 
 
-def submission_handler(event: Union[S3LinkInput, StacItemInput], cognito_app_secret=None, stac_ingestor_api_url=None, context={}) -> None:
+def submission_handler(
+    event: Union[S3LinkInput, StacItemInput],
+    cognito_app_secret=None,
+    stac_ingestor_api_url=None,
+    context={},
+) -> None:
     # print(f"SUBMISSION EVENT {event}")
     stac_item = event
 
@@ -103,7 +109,7 @@ def submission_handler(event: Union[S3LinkInput, StacItemInput], cognito_app_sec
         print(json.dumps(stac_item, indent=2))
         return
     ingestor = IngestionApi.from_veda_auth_secret(
-        secret_id= os.getenv("COGNITO_APP_SECRET", cognito_app_secret),
+        secret_id=os.getenv("COGNITO_APP_SECRET", cognito_app_secret),
         base_url=os.getenv("STAC_INGESTOR_API_URL", stac_ingestor_api_url),
     )
     ingestor.submit(stac_item)
