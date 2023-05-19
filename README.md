@@ -1,0 +1,2 @@
+# VEDA Pipeline Tasks
+This repository contains STAC record ingest code which can be used by AWS Step Functions + Lambda task runners or by Apache Airflow pipelines ([here](https://github.com/NASA-IMPACT/veda-data-airflow), deployed against MWAA). Note that submodules should be used to avoid MWAA security restrictions on `pip` installing from git repositories.

@@ -1,8 +1,16 @@
-from dataclasses import dataclass
 import json
+import sys
+from dataclasses import dataclass
 import os
 from urllib.parse import urlparse
-from typing import Any, Dict, List, Optional, TypedDict, Union
+from typing import Any, Dict, List, Optional, Union
+
+if sys.version_info >= (3, 8):
+    from typing import TypedDict
+else:
+    from typing_extensions import TypedDict
+
+from typing import Any, Dict, Optional, Union
 
 import boto3
 import requests
@@ -79,9 +87,9 @@ class IngestionApi:
         )
         try:
             response.raise_for_status()
-        except:
+        except Exception as ex:
             print(response.text)
-            raise
+            raise f"Error, {ex}"
         return response.json()
 
     def submit(self, url: str, body: Dict[str, Any]):
@@ -112,24 +120,15 @@ class IngestionApi:
         )
 
 
-def get_stac_item(event: Dict[str, Any]) -> Dict[str, Any]:
-    if stac_item := event.get("stac_item"):
-        return stac_item
-
-    if file_url := event.get("stac_file_url"):
-        url = urlparse(file_url)
-
-        response = boto3.client("s3").get_object(
-            Bucket=url.hostname,
-            Key=url.path.lstrip("/"),
-        )
-        return json.load(response["Body"])
-
-    raise Exception("No stac_item or stac_file_url provided")
-
-
-def submission_handler(event: Union[S3LinkInput, StacItemInput], context) -> None:
-    stac_item = get_stac_item(event)
+def submission_handler(
+    event: Union[S3LinkInput, StacItemInput],
+    cognito_app_secret=None,
+    stac_ingestor_api_url=None,
+    blockchain_api_url=None,
+    context={},
+) -> None:
+    # print(f"SUBMISSION EVENT {event}")
+    stac_item = event
 
     if event.get("dry_run"):
         print("Dry run, not inserting, would have inserted:")
@@ -137,9 +136,9 @@ def submission_handler(event: Union[S3LinkInput, StacItemInput], context) -> Non
         return
 
     ingestor = IngestionApi.from_veda_auth_secret(
-        secret_id=os.environ["COGNITO_APP_SECRET"],
-        base_url=os.environ["STAC_INGESTOR_API_URL"],
-        blockchain_base_url=os.environ["STAC_INGESTOR_API_URL"],
+        secret_id=os.getenv("COGNITO_APP_SECRET", cognito_app_secret),
+        base_url=os.getenv("STAC_INGESTOR_API_URL", stac_ingestor_api_url),
+        blockchain_base_url=os.getenv("BLOCKCHAIN_API_URL", blockchain_api_url),
     )
     ingestor.submit_to_ingestor(stac_item)
     # print("Successfully submitted STAC item")
@@ -165,4 +164,4 @@ if __name__ == "__main__":
         # or
         "stac_item": {},
     }
-    submission_handler(sample_event, {})
+    submission_handler(sample_event)

@@ -1,6 +1,5 @@
-import re
-
 import datetime as dt
+import re
 
 from cmr import GranuleQuery
 

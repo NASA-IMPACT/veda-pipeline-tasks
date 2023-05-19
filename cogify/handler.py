@@ -1,11 +1,9 @@
 import configparser
 import os
-import requests
 
 import boto3
-
 import numpy as np
-
+import requests
 from affine import Affine
 from netCDF4 import Dataset
 from rasterio.crs import CRS
@@ -13,7 +11,6 @@ from rasterio.io import MemoryFile
 from rasterio.warp import calculate_default_transform
 from rio_cogeo.cogeo import cog_translate
 from rio_cogeo.profiles import cog_profiles
-
 
 config = {
     "DEFAULT": {"output_bucket": "climatedashboard-data", "output_dir": "OMDOAO3e_003"},
@@ -64,13 +61,13 @@ def upload_file(outfilename, collection):
         raise
 
 
-def download_file(file_uri: str):
+def download_file(file_uri: str, earthdata_username=None, earthdata_password=None):
     filename = os.path.splitext(os.path.basename(file_uri))[0]
     filename = f"/tmp/{filename}"
     if "http" in file_uri:
         # This isn't working for GPMIMERG, need to use .netrc
-        username = os.environ.get("EARTHDATA_USERNAME")
-        password = os.environ.get("EARTHDATA_PASSWORD")
+        username = os.getenv("EARTHDATA_USERNAME", earthdata_username)
+        password = os.getenv("EARTHDATA_PASSWORD", earthdata_password)
         with requests.Session() as session:
             session.auth = (username, password)
             request = session.request("get", file_uri)
@@ -185,7 +182,7 @@ def to_cog(upload, **config):
     return return_obj
 
 
-def cogify_handler(event, context):
+def cogify_handler(event, context=None):
     filename = event["href"]
     collection = event["collection"]
     to_cog_config = config._sections[collection]
