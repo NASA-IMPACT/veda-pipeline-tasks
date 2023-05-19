@@ -72,6 +72,23 @@ def generate_payload(s3_prefix_key: str, payload: dict):
 
 
 def s3_discovery_handler(event, chunk_size=2800, role_arn=None, bucket_output=None):
+    """
+    input:
+        event: {
+            "bucket": "",
+            "prefix": "",
+            "filename_regex": "",
+            "collection": "",
+            "properties": {},
+            "cogify": False,
+            "slice": [0, 1],
+            "single_datetime": "",
+            "start_datetime": "",
+            "end_datetime": "",
+            "datetime_range": "" (month/year),
+            "citations": [],
+        }
+    """
     bucket = event.get("bucket")
     prefix = event.get("prefix", "")
     filename_regex = event.get("filename_regex", None)
@@ -94,7 +111,6 @@ def s3_discovery_handler(event, chunk_size=2800, role_arn=None, bucket_output=No
     role_arn = os.environ.get("ASSUME_ROLE_ARN", role_arn)
     kwargs = assume_role(role_arn=role_arn) if role_arn else {}
     s3client = boto3.client("s3", **kwargs)
-
     s3_iterator = get_s3_resp_iterator(
         bucket_name=bucket, prefix=prefix, s3_client=s3client
     )
@@ -121,6 +137,7 @@ def s3_discovery_handler(event, chunk_size=2800, role_arn=None, bucket_output=No
             "upload": event.get("upload", False),
             "properties": properties,
             **date_fields,
+            "citations": event.get("citations"),
         }
 
         payload["objects"].append(file_obj)
