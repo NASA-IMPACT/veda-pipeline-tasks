@@ -22,6 +22,8 @@ class BaseEvent(BaseModel, frozen=True):
 
     providers: List[Provider] = []
 
+    citations: Optional[List[str]] = []
+
     def item_id(self: "BaseEvent") -> str:
         if self.id_regex:
             id_components = re.findall(self.id_regex, self.s3_filename)

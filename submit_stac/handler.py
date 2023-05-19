@@ -2,7 +2,7 @@ from dataclasses import dataclass
 import json
 import os
 from urllib.parse import urlparse
-from typing import Any, Dict, Optional, TypedDict, Union
+from typing import Any, Dict, List, Optional, TypedDict, Union
 
 import boto3
 import requests
@@ -14,10 +14,14 @@ class InputBase(TypedDict):
 
 class S3LinkInput(InputBase):
     stac_file_url: str
+    s3uri: str
+    citations: Optional[List[str]]
 
 
 class StacItemInput(InputBase):
     stac_item: Dict[str, Any]
+    s3uri: str
+    citations: Optional[List[str]]
 
 
 class AppConfig(TypedDict):
@@ -37,12 +41,19 @@ class Creds(TypedDict):
 class IngestionApi:
     base_url: str
     token: str
+    blockchain_base_url: str
 
     @classmethod
-    def from_veda_auth_secret(cls, *, secret_id: str, base_url: str) -> "IngestionApi":
+    def from_veda_auth_secret(
+        cls, *, secret_id: str, base_url: str, blockchain_base_url: str
+    ) -> "IngestionApi":
         cognito_details = cls._get_cognito_service_details(secret_id)
         credentials = cls._get_app_credentials(**cognito_details)
-        return cls(token=credentials["access_token"], base_url=base_url)
+        return cls(
+            token=credentials["access_token"],
+            base_url=base_url,
+            blockchain_base_url=blockchain_base_url,
+        )
 
     @staticmethod
     def _get_cognito_service_details(secret_id: str) -> AppConfig:
@@ -73,10 +84,10 @@ class IngestionApi:
             raise
         return response.json()
 
-    def submit(self, stac_item: Dict[str, Any]):
+    def submit(self, url: str, body: Dict[str, Any]):
         response = requests.post(
-            f"{self.base_url.rstrip('/')}/ingestions",
-            json=stac_item,
+            url=url,
+            json=body,
             headers={"Authorization": f"bearer {self.token}"},
         )
 
@@ -87,6 +98,18 @@ class IngestionApi:
             raise e
 
         return response.json()
+
+    def submit_to_ingestor(self, stac_item: Dict[str, Any]):
+        self.submit(
+            url=f"{self.base_url.rstrip('/')}/ingestions",
+            body=stac_item,
+        )
+
+    def submit_to_blockchain(self, metadata: Dict[str, Any]):
+        self.submit(
+            url=f"{self.blockchain_url.rstrip('/')}/metadata/s3",
+            body=metadata,
+        )
 
 
 def get_stac_item(event: Dict[str, Any]) -> Dict[str, Any]:
@@ -116,18 +139,30 @@ def submission_handler(event: Union[S3LinkInput, StacItemInput], context) -> Non
     ingestor = IngestionApi.from_veda_auth_secret(
         secret_id=os.environ["COGNITO_APP_SECRET"],
         base_url=os.environ["STAC_INGESTOR_API_URL"],
+        blockchain_base_url=os.environ["STAC_INGESTOR_API_URL"],
     )
+    ingestor.submit_to_ingestor(stac_item)
+    # print("Successfully submitted STAC item")
 
-    ingestor.submit(stac_item)
-    print(f"Successfully submitted STAC item")
+    s3uri = event.get("s3uri")
+    name = s3uri.split("/")[-1]
+    # Prep blockchain payload
+    payload = {
+        "name": name,
+        "s3uri": s3uri,
+        "username": "",
+        "citations": event.get("citations"),
+    }
+    ingestor.submit_to_blockchain(payload)
 
 
 if __name__ == "__main__":
     filename = "example.ndjson"
     sample_event = {
+        "s3uri": "s3://bucket/key",
+        "citations": ["metadata1id"],
         "stac_file_url": "example.ndjson",
         # or
         "stac_item": {},
-        "type": "collections",
     }
     submission_handler(sample_event, {})

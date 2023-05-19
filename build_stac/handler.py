@@ -1,7 +1,7 @@
 import json
 import os
 from sys import getsizeof
-from typing import Any, Dict, TypedDict, Union
+from typing import Any, Dict, TypedDict, Union, List, Optional
 from uuid import uuid4
 
 import smart_open
@@ -11,10 +11,14 @@ from utils import stac, events
 
 class S3LinkOutput(TypedDict):
     stac_file_url: str
+    citations: Optional[List[str]]
+    s3uri: str
 
 
 class StacItemOutput(TypedDict):
     stac_item: Dict[str, Any]
+    citations: Optional[List[str]]
+    s3uri: str
 
 
 def handler(event: Dict[str, Any], context) -> Union[S3LinkOutput, StacItemOutput]:
@@ -43,7 +47,11 @@ def handler(event: Dict[str, Any], context) -> Union[S3LinkOutput, StacItemOutpu
     if event["providers"]:
         stac_item["providers"] = event["providers"]
 
-    output: StacItemOutput = {"stac_item": stac_item}
+    extra_output = {"s3uri": event["s3_filename"]}
+    if citations := event["citations"]:
+        extra_output["citations"] = citations
+
+    output: StacItemOutput = {"stac_item": stac_item, **extra_output}
 
     # Return STAC Item Directly
     if getsizeof(json.dumps(output)) < (256 * 1024):
@@ -54,7 +62,7 @@ def handler(event: Dict[str, Any], context) -> Union[S3LinkOutput, StacItemOutpu
     with smart_open.open(key, "w") as file:
         file.write(json.dumps(stac_item))
 
-    return {"stac_file_url": key}
+    return {"stac_file_url": key, **extra_output}
 
 
 if __name__ == "__main__":

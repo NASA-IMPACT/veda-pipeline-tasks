@@ -76,7 +76,24 @@ def generate_payload(s3_prefix_key: str, payload: dict, limit: int = None):
     return output_key
 
 
-def s3_discovery_handler(event, chunk_size=2800):
+def s3_discovery_handler(event, chunk_size=2800, role_arn=None, bucket_output=None):
+    """
+    input:
+        event: {
+            "bucket": "",
+            "prefix": "",
+            "filename_regex": "",
+            "collection": "",
+            "properties": {},
+            "cogify": False,
+            "slice": [0, 1],
+            "single_datetime": "",
+            "start_datetime": "",
+            "end_datetime": "",
+            "datetime_range": "" (month/year),
+            "citations": [],
+        }
+    """
     bucket = event.get("bucket")
     prefix = event.get("prefix", "")
     filename_regex = event.get("filename_regex", None)
@@ -117,6 +134,7 @@ def s3_discovery_handler(event, chunk_size=2800):
             "upload": event.get("upload", False),
             "properties": properties,
             **date_fields,
+            "citations": event.get("citations"),
         }
 
         payload["objects"].append(file_obj)
