@@ -15,7 +15,7 @@ def assume_role(role_arn, session_name):
     return creds["Credentials"]
 
 
-def handler(event, context):
+def data_transfer_handler(event, context):
     TARGET_BUCKET = os.environ["BUCKET"]
 
     kwargs = {}

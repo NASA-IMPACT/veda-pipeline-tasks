@@ -1,6 +1,7 @@
 import json
 import os
 import re
+from typing import List
 from uuid import uuid4
 
 import boto3
@@ -35,7 +36,7 @@ def get_s3_resp_iterator(bucket_name, prefix, s3_client, page_size=1000):
     )
 
 
-def discover_from_s3(response_iterator):
+def discover_from_s3(response_iterator, filename_regex: str) -> dict:
     """Iterate through pages of S3 objects returned by a ListObjectsV2 operation.
     The discover_from_s3 function takes in an iterator over the pages of S3 objects returned
     by a ListObjectsV2 operation. It iterates through the pages and yields each S3 object in the page as a dictionary.
@@ -44,13 +45,38 @@ def discover_from_s3(response_iterator):
 
     Parameters:
     response_iterator (iter): An iterator over the pages of S3 objects returned by a ListObjectsV2 operation.
+    filename_regex (str): A regular expression used to filter the S3 objects returned by the ListObjectsV2 operation.
 
     Yields:
     dict: A dictionary representing an S3 object.
     """
     for page in response_iterator:
         for s3_object in page.get("Contents", {}):
-            yield s3_object
+            key = s3_object["Key"]
+            if re.match(filename_regex, key): 
+                yield s3_object
+
+def group_assets(discovered_files: List[str], assets: dict) -> list:
+    grouped_files = {}
+    for filename in discovered_files:
+        for key in assets.keys():
+            if re.match(assets[key]["regex"], filename):
+                grouped_files.setdefault(key, [])
+                grouped_files[key].append(filename)
+    return grouped_files
+
+def group_assets_by_shared_dt(grouped_assets: List[str], datetime_group: str) -> list:
+    items = {}
+    for assets in grouped_assets.values():
+        for asset in assets:
+            if match := re.match(datetime_group, asset):
+                try:
+                    date_grp = match.group(1)
+                    items.setdefault(date_grp, [])
+                    items[date_grp].append(asset)
+                except IndexError:
+                    pass
+    return items
 
 
 def generate_payload(s3_prefix_key: str, payload: dict):
@@ -77,7 +103,11 @@ def s3_discovery_handler(event, chunk_size=2800, role_arn=None, bucket_output=No
     filename_regex = event.get("filename_regex", None)
     collection = event.get("collection", prefix.rstrip("/"))
     properties = event.get("properties", {})
-    event["cogify"] = event.pop("cogify", False)
+    assets = event.get("assets", {})
+    datetime_group = event.get("datetime_group")
+
+
+
     payload = {**event, "objects": []}
     slice = event.get("slice")
     # Propagate forward optional datetime arguments
@@ -103,22 +133,29 @@ def s3_discovery_handler(event, chunk_size=2800, role_arn=None, bucket_output=No
     records = 0
     out_keys = []
     discovered = 0
-    for idx, s3_object in enumerate(discover_from_s3(s3_iterator)):
+    file_uris = [
+        f"s3://{bucket}/{name}"
+        for name in discover_from_s3(s3_iterator, filename_regex)
+    ]
+    grouped_assets = group_assets(file_uris, assets)
+    assets_grouped_by_dt = group_assets_by_shared_dt()
+
+    item_count = 0
+    for item_dt_str, asset_uris in assets_grouped_by_dt.items():
+        count += 1
         # Logic to ingest a 'slice' of data
         if slice:
-            if idx < slice[0]:  # Skip until we reach the start of the slice
+            if item_count < slice[0]:  # Skip until we reach the start of the slice
                 continue
             if (
-                idx >= slice[1]
+                item_count >= slice[1]
             ):  # Stop once we reach the end of the slice, while saving progress
                 break
-        filename = s3_object["Key"]
-        if filename_regex and not re.match(filename_regex, filename):
-            continue
         file_obj = {
             "collection": collection,
-            "s3_filename": f"s3://{bucket}/{filename}",
-            "upload": event.get("upload", False),
+            "assets": asset_uris,
+            "datetime_string": item_dt_str,
+            "s3_filenames": asset_uris,
             "properties": properties,
             **date_fields,
         }
