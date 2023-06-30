@@ -207,4 +207,4 @@ if __name__ == "__main__":
         "upload": False,
         "granule_id": "G2205784904-GES_DISC",
     }
-    handler(sample_event, {})
+    cogify_handler(sample_event, {})

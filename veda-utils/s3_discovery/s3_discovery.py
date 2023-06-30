@@ -6,21 +6,6 @@ from uuid import uuid4
 import boto3
 from smart_open import open as smrt_open
 
-
-def assume_role(role_arn, session_name="veda-data-pipelines_s3-discovery"):
-    sts = boto3.client("sts")
-    credentials = sts.assume_role(
-        RoleArn=role_arn,
-        RoleSessionName=session_name,
-    )
-    creds = credentials["Credentials"]
-    return {
-        "aws_access_key_id": creds["AccessKeyId"],
-        "aws_secret_access_key": creds.get("SecretAccessKey"),
-        "aws_session_token": creds.get("SessionToken"),
-    }
-
-
 def get_s3_resp_iterator(bucket_name, prefix, s3_client, page_size=1000):
     """
     Returns an s3 paginator.
@@ -71,7 +56,7 @@ def generate_payload(s3_prefix_key: str, payload: dict):
     return output_key
 
 
-def s3_discovery_handler(event, chunk_size=2800, role_arn=None, bucket_output=None):
+def s3_discovery(event, chunk_size, bucket_output, kwargs):
     bucket = event.get("bucket")
     prefix = event.get("prefix", "")
     filename_regex = event.get("filename_regex", None)
@@ -91,8 +76,6 @@ def s3_discovery_handler(event, chunk_size=2800, role_arn=None, bucket_output=No
     if "datetime_range" in event:
         date_fields["datetime_range"] = event["datetime_range"]
 
-    role_arn = os.environ.get("ASSUME_ROLE_ARN", role_arn)
-    kwargs = assume_role(role_arn=role_arn) if role_arn else {}
     s3client = boto3.client("s3", **kwargs)
 
     s3_iterator = get_s3_resp_iterator(
@@ -134,4 +117,4 @@ def s3_discovery_handler(event, chunk_size=2800, role_arn=None, bucket_output=No
     if payload["objects"]:
         out_keys.append(generate_payload(s3_prefix_key=key, payload=payload))
         discovered += len(payload["objects"])
-    return {**event, "payload": out_keys, "discovered": discovered}
+    return out_keys, discovered
